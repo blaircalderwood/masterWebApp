@@ -1,0 +1,19 @@
+.centre-text{
+    text-align: center;
+}
+
+.full-width{
+    width: 100%;
+}
+
+.no-bullets{
+    list-style: none;
+}
+
+.pad-top{
+    padding-top: 3%;
+}
+
+.align-right{
+    text-align: right;
+}

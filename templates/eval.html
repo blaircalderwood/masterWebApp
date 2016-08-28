@@ -1,0 +1,29 @@
+{% extends 'base_template.html' %}
+{% load staticfiles %}
+
+{% block content %}
+
+    <div class="col-md-6">
+        <img src="{{ img }}">
+    </div>
+
+    <div class="col-md-3">
+        <form id="add_rating" method="post" action="/evaluation/upload/" class="align-right">
+
+            {% csrf_token %}
+            {% for hidden in form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            {% for field in form.visible_fields %}
+                {{ field.errors }}
+                {{ field.label }}
+                {{ field }}
+                <br>
+            {% endfor %}
+
+            <input type="submit" name="submit" value="Confirm Choices" class="btn btn-info"/>
+        </form>
+    </div>
+
+{% endblock %}
