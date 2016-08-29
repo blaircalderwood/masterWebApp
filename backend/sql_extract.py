@@ -1,13 +1,16 @@
-import pymysql
+import math
+import sys
+
 import numpy as np
+import pymysql
+
 import countries
 import datetime_functions as dtf
 import location
-import image_processing as ip
-import math
-from noise import remove_noise
+from context_retrieval import image_processing as ip
 from flickr_data import flickr_api
-import sys
+from noise import remove_noise
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -236,6 +239,8 @@ def create_data(directory, lower_limit, upper_limit):
 
 
 def get_photo_data(limit=0):
+
+    open_connection()
 
     if limit is not 0:
         cur.execute("SELECT * FROM flickrptr_photos_info LIMIT %s", limit)

@@ -1,9 +1,10 @@
-from django.shortcuts import render
-from forms import RatingForm, ImageForm
-from backend import interface
 from random import choice
+
 from django.forms import formset_factory
-import os
+from django.shortcuts import render
+
+import interface
+from forms import RatingForm, ImageForm
 
 choice_list = []
 system_choice = ''
@@ -22,8 +23,10 @@ def rating_form(request):
 
         form = RatingForm(request.POST, choice_list=choice_list)
 
-        # Have we been provided with a valid form?
+        # Check the user has provided a valid form
         if form.is_valid():
+
+            image = "/media/%s" % interface.get_next_image()
 
             system_choice = choice(systems)
             choice_list = interface.get_recommendations(system_choice, image)
@@ -33,8 +36,6 @@ def rating_form(request):
             form = RatingForm(choice_list=choice_list)
             form.fields["system_choice"].initial = system_choice
 
-            image = "/media/%s" % interface.get_next_image()
-
             return render(request, 'eval.html', {'form': form, 'img': image})
         else:
             # The supplied form contained errors - just print them to the terminal.
@@ -43,7 +44,7 @@ def rating_form(request):
     else:
 
         system_choice = choice(systems)
-        choice_list = interface.get_recommendations(system_choice, image)
+        choice_list = interface.get_recommendations(system_choice, '', image)
 
         # If the request was not a POST, display the form to enter details.
         form = RatingForm(choice_list=choice_list)
@@ -60,11 +61,11 @@ def upload_image(request):
     global system_choice
     global image
 
-    imageFormSet = formset_factory(ImageForm, extra=2)
+    image_form_set = formset_factory(ImageForm, extra=2)
 
     if request.method == 'POST':
 
-        form = imageFormSet(request.POST, request.FILES)
+        form = image_form_set(request.POST, request.FILES)
 
         # Have we been provided with a valid form?
         if form.is_valid():
@@ -73,18 +74,19 @@ def upload_image(request):
             for f in form:
                 f.save(commit=True)
 
+            interface.create_image_data()
             image = interface.get_next_image()
 
             system_choice = choice(systems)
             form = RatingForm(choice_list=choice_list)
-            choice_list = interface.get_recommendations(system_choice, image)
+            choice_list = interface.get_recommendations(system_choice, '', image)
 
             return render(request, 'eval.html', {'form': form, 'img': image})
 
     else:
 
         # If the request was not a POST, display the form to enter details.
-        form = imageFormSet()
+        form = image_form_set()
         print(form.as_table())
 
     # Bad form (or form details), no form supplied...

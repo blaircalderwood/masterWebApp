@@ -3,13 +3,14 @@ import json
 from math import floor
 import numpy as np
 from datetime import datetime
+from backend import countries
 
 api_key = u'267fe530e588c482dfdad60a0ea85955'
 api_secret = u'05307043c90701cf'
 flickr = flickrapi.FlickrAPI(api_key, api_secret, format='json')
 
-camera_brands = np.load("flickr_data/camera_brands.npy")
-camera_models = np.load("flickr_data/camera_models.npy")
+# camera_brands = np.load("flickr_data/camera_brands.npy")
+# camera_models = np.load("flickr_data/camera_models.npy")
 
 
 # Get the exif data (camera name, flash etc) and return relevant data
@@ -183,7 +184,7 @@ def test_thresholds(photo_array):
     print low_views, average_views, high_views
 
 
-def get_place(lat, lng):
+def get_place(lat, lng, get_country_continent=False):
 
     # Get the place ID
     data = flickr.places.findByLatLon(lat=lat, lon=lng, accuracy=11)
@@ -191,9 +192,18 @@ def get_place(lat, lng):
 
     # Get the place ID of the city in which this place resides
     try:
-        return data['places']['place'][0]['place_id']
+        place = data['places']['place'][0]['place_id']
+
+        if get_country_continent:
+
+            data = flickr.places.getinfo(place_id=place)
+            country = countries.get_country_index(json.loads(data.decode('utf-8'))['place']['country']['_content'])
+            continent = countries.find_continent(country)
+
+            return place, country, continent
+
     except IndexError:
-        return "0"
+        return '0'
 
 
 # TODO: Remove if not needed

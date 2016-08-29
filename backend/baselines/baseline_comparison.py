@@ -1,9 +1,9 @@
-import baselines.flickr_reccommended as fr
-import baselines.tag_cooccurrence as tc
-import sql_extract
-from general_functions import binary_search
+import backend.baselines.flickr_reccommended as fr
+import backend.baselines.tag_cooccurrence as tc
+from backend import sql_extract
+from backend.general_functions import binary_search
 import numpy as np
-import location
+from backend import location
 import random
 from copy import copy
 
@@ -76,7 +76,7 @@ def set_up(limit, training_amount, load_from_file=False):
     else:
         tc.create(training_array, training_tags, tag_array)
 
-    return test_photos, test_tags
+    return np.array(test_photos), np.array(test_tags)
 
 
 def execute_test(test_photos, test_tags, write_results=False):

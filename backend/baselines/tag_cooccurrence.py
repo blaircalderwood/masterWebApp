@@ -1,8 +1,8 @@
 import numpy as np
-from general_functions import binary_search
+from backend.general_functions import binary_search
 from scipy import sparse, io
-import location
-import flickr_data.flickr_api as fa
+from backend import location
+import backend.flickr_data.flickr_api as fa
 
 saved_tag_array = []
 saved_occurrences = []
