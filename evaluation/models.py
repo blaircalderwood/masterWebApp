@@ -23,8 +23,11 @@ class Rating(models.Model):
 class UserImage(models.Model):
 
     img = models.ImageField(upload_to='user_images')
+    tag = models.CharField(max_length=100)
+    img_name = models.CharField(max_length=50)
 
     def save(self, *args, **kwargs):
+        self.img_name = self.img.name
         super(UserImage, self).save(*args, **kwargs)
 
     def __unicode__(self):

@@ -2,15 +2,17 @@ from random import choice
 
 from django.forms import formset_factory
 from django.shortcuts import render
-
+import backend.baselines.tag_cooccurrence as tc
 import interface
 from forms import RatingForm, ImageForm
+from models import UserImage
 
 choice_list = []
 system_choice = ''
 systems = ['flickr_recommended', 'tag_cooccurrence', 'phillip_system', 'new_sys']
 imgs = []
 image = ''
+data = {'form-TOTAL_FORMS': '2', 'form-INITIAL_FORMS': '0', 'form-MAX_NUM_FORMS': ''}
 
 
 def rating_form(request):
@@ -26,33 +28,26 @@ def rating_form(request):
         # Check the user has provided a valid form
         if form.is_valid():
 
-            image = "/media/%s" % interface.get_next_image()
-
-            system_choice = choice(systems)
-            choice_list = interface.get_recommendations(system_choice, image)
-
-            # Save the new category to the database.
+            # Save the new rating to the database.
             form.save(commit=True)
-            form = RatingForm(choice_list=choice_list)
-            form.fields["system_choice"].initial = system_choice
 
-            return render(request, 'eval.html', {'form': form, 'img': image})
+            form, image, img_name, tag = interface.next_img()
+
+            if form is None:
+                return render(request, 'complete.html')
+
+            return render(request, 'eval.html', {'form': form, 'img': '/media/user_images/' + img_name, 'tag': tag})
         else:
             # The supplied form contained errors - just print them to the terminal.
             print form.errors
 
     else:
 
-        system_choice = choice(systems)
-        choice_list = interface.get_recommendations(system_choice, '', image)
-
-        # If the request was not a POST, display the form to enter details.
-        form = RatingForm(choice_list=choice_list)
-        form.fields["system_choice"].initial = system_choice
+        form, image = interface.next_img()
 
     # Bad form (or form details), no form supplied...
     # Render the form with error messages (if any).
-    return render(request, "eval.html", {'form': form, 'img': image})
+    return render(request, "eval.html", {'form': form, 'img': '/' + image})
 
 
 def upload_image(request):
@@ -65,7 +60,7 @@ def upload_image(request):
 
     if request.method == 'POST':
 
-        form = image_form_set(request.POST, request.FILES)
+        form = image_form_set(request.POST, request.FILES, data)
 
         # Have we been provided with a valid form?
         if form.is_valid():
@@ -75,18 +70,14 @@ def upload_image(request):
                 f.save(commit=True)
 
             interface.create_image_data()
-            image = interface.get_next_image()
+            form, image, img_name, tag = interface.next_img()
 
-            system_choice = choice(systems)
-            form = RatingForm(choice_list=choice_list)
-            choice_list = interface.get_recommendations(system_choice, '', image)
-
-            return render(request, 'eval.html', {'form': form, 'img': image})
+            return render(request, 'eval.html', {'form': form, 'img': '/media/user_images/' + img_name, 'tag': tag})
 
     else:
 
         # If the request was not a POST, display the form to enter details.
-        form = image_form_set()
+        form = image_form_set(data)
         print(form.as_table())
 
     # Bad form (or form details), no form supplied...

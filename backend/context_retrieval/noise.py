@@ -65,8 +65,8 @@ def remove_noise(tags):
 
 def load_files():
     global camera_brands, camera_models
-    # camera_brands = np.load("flickr_data/camera_brands.npy")
-    # camera_models = np.load("flickr_data/camera_models.npy")
+    camera_brands = np.load("flickr_data/camera_brands.npy")
+    camera_models = np.load("flickr_data/camera_models.npy")
 
 
 load_files()

@@ -1,6 +1,6 @@
 
 # Read in text file containing list of countries sorted by continent
-countries_file = file('backend/countries.txt', 'r')
+countries_file = file('backend/context_retrieval/countries.txt', 'r')
 countries = countries_file.readlines()
 
 for i, country in enumerate(countries):

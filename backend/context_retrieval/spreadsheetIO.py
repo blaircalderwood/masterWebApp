@@ -19,3 +19,17 @@ def matrix_to_spreadsheet(tag_array, matrix, spreadsheet_file):
 
     ssheet_file = open(spreadsheet_file, 'w')
     ssheet_file.write(tags + new_file)
+
+
+def save_results(results, spreadsheet_file):
+
+    new_file = ""
+
+    for result in results:
+        for field in result:
+            new_file += str(field)
+            new_file += ','
+        new_file += '\n'
+
+    ssheet_file = open(spreadsheet_file, 'w')
+    ssheet_file.write(new_file)

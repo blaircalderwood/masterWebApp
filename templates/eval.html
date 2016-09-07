@@ -8,7 +8,13 @@
     </div>
 
     <div class="col-md-3">
-        <form id="add_rating" method="post" action="/evaluation/upload/" class="align-right">
+
+        <h4 class="align-right">You entered: {{ tag }}</h4>
+        <br>
+        <h4 class="align-right">Your recommendations</h4>
+
+        <form id="add_rating" method="post" action="/evaluation/rate_image/" class="align-right"
+              enctype="multipart/form-data">
 
             {% csrf_token %}
             {% for hidden in form.hidden_fields %}

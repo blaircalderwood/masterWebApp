@@ -3,13 +3,12 @@ import sys
 
 import numpy as np
 import pymysql
-
+from pymysql import DataError
 import countries
 import datetime_functions as dtf
+import image_processing as ip
 import location
-from context_retrieval import image_processing as ip
-from flickr_data import flickr_api
-from noise import remove_noise
+from backend.flickr_data import flickr_api
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -115,14 +114,18 @@ def get_photo_tags(photo_id):
     for tag in cur:
         tags.append(tag[0].encode('string-escape'))
 
-    if tags is []:
+    if len(tags) is 0:
+
         tags = flickr_api.get_tags(photo_id)
-        print "Tags retrieved"
-        save_photo(tags, "flickrptr_photos_tags")
+
+        # Save tags to database so they don't need to be retrieved from server in the future
+        for tag in tags:
+            if len(tag) <= 100:
+                save_photo({'photoID': str(photo_id), 'tag': tag}, "flickrptr_photos_tags")
 
     # Remove noisey tags
     # TODO: adding tags to array simply to remove them again seems redundant - fix?
-    tags = remove_noise(tags)
+    # tags = remove_noise(tags)
 
     # Return a numpy array of tags
     return tags
@@ -149,8 +152,12 @@ def save_photo(obj, table):
         sql = "REPLACE INTO %s (%s) VALUES(%s)"
 
         sql = sql % (table, keys, values)
-        # Place the new data into the database using the two aforementioned strings
-        cur.execute(sql)
+
+        try:
+            # Place the new data into the database using the two aforementioned strings
+            cur.execute(sql)
+        except DataError:
+            pass
 
         # Save the new row
         conn.commit()
@@ -178,72 +185,71 @@ def create_data(directory, lower_limit, upper_limit):
     # Get all previously created data
     photo_array = get_photo_data(upper_limit)
     photos_tags = [get_photo_tags(photo['id']) for photo in photo_array]
-    pa_len = len(photo_array)
 
-    # Check if the length of the photo array is bigger than the upper limit
-    # If it is then no work needs to be done here as all relevant photos have been processed
-    if pa_len < upper_limit:
+    # Retrieve Open CV ready images from the directory taking account of given file limit and offset
+    # This runs through files even if they are already in the database
+    photo_info_array = ip.images_from_directory(directory, lower_limit, upper_limit)
 
-        # Only need to process data that is found between lower and upper limits and has not already been processed
-        lower_limit = max(lower_limit, pa_len)
+    # Loop through each photo in the aforementioned array
+    for image_index, image in enumerate(photo_info_array):
 
-        # Retrieve Open CV ready images from the directory taking account of given file limit and offset
-        # This runs through files even if they are already in the database
-        photo_info_array = ip.images_from_directory(directory, lower_limit, upper_limit)
+        # Get the information related to this photo and its features
+        new_photo = get_photo_info(image)
 
-        photos_tags = []
+        # Ensure that data was properly retrieved for photo
+        if new_photo is False:
 
-        # Loop through each photo in the aforementioned array
-        # Only loop through data that has not yet been created
+            # Many of the images in the provided folder did not relate to any rows in the database
+            # (only 14 in first 40 images were found before this code was written to fix this)
+            info = flickr_api.missing_flickr_info(image[1])
 
-        for image in photo_info_array[:pa_len]:
+            if info is False:
+                # Skip this loop iteration as the Flickr photo cannot be found (may have been deleted by the user)
+                continue
 
             # Get the information related to this photo and its features
-            new_photo = get_photo_info(image)
+            new_photo = add_context(info, image[0])
 
-            # Ensure that data was properly retrieved for photo
-            if new_photo is False:
+            # Save the new photo - processing (i.e. obtaining features) of an image only has to take place once
+            save_photo(new_photo, "flickrptr_photos_info")
 
-                # Many of the images in the provided folder did not relate to any rows in the database
-                # (only 14 in first 40 images were found before this code was written to fix this)
-                info = flickr_api.missing_flickr_info(image[1])
+        # Append the information on the photo and its tags to the corresponding arrays
+        photo_array[image_index] = new_photo
+        tags = get_photo_tags(image[1])
 
-                if info is False:
-                    # Skip this loop iteration as the Flickr photo cannot be found (may have been deleted by the user)
-                    continue
+        final_tags = []
 
-                print info
+        # Add any new tags to the tag array
+        for tag in tags:
+            if len(tag) <= 100:
+                try:
+                    cur.execute("REPLACE INTO tags(tag) VALUES(%s)", tag.encode('unicode-escape'))
+                    final_tags.append(tag)
+                except DataError:
+                    print "Could not save tag"
 
-                # Get the information related to this photo and its features
-                new_photo = add_context(info, image[0])
+        conn.commit()
 
-                # Save the new photo - processing (i.e. obtaining features) of an image only has to take place once
-                save_photo(new_photo, "flickrptr_photos_info")
-
-            # Append the information on the photo and its tags to the corresponding arrays
-            photo_array.append(new_photo)
-            tags = get_photo_tags(image[1])
-            photos_tags.append(tags)
-
-            # Add any new tags to the tag array
-            for tag in tags:
-                if len(tag) < 50:
-                    cur.execute("REPLACE INTO tags(tag) VALUES(%s)", tag)
-
-            conn.commit()
+        photos_tags[image_index] = final_tags
 
     close_connection()
+
+    print len(photo_array), len(photos_tags)
 
     # Return the collected photos and their corresponding tags
     return np.array(photo_array), np.array(photos_tags)
 
 
-def get_photo_data(limit=0):
-
-    open_connection()
+def get_photo_data(limit=0, offset=0):
 
     if limit is not 0:
-        cur.execute("SELECT * FROM flickrptr_photos_info LIMIT %s", limit)
+        if offset is not 0:
+            limit -= offset
+            cur.execute("SELECT * FROM flickrptr_photos_info LIMIT %s OFFSET %s", (limit, offset))
+
+        else:
+            cur.execute("SELECT * FROM flickrptr_photos_info LIMIT %s", limit)
+
     else:
         cur.execute("SELECT * FROM flickrptr_photos_info")
 

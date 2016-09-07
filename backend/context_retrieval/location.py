@@ -1,7 +1,6 @@
 from scipy import sparse
 import numpy as np
-import flickr_data.flickr_api as fa
-from spreadsheetIO import matrix_to_spreadsheet
+from backend.flickr_data import flickr_api as fa
 from general_functions import binary_search
 import pymysql
 import json
@@ -16,6 +15,8 @@ db = 'flickrptr'
 
 conn = None
 cur = None
+
+current_matrix = []
 
 
 def open_connection():
@@ -139,10 +140,20 @@ def save_to_area(place_or_date, photo_tags):
         return
 
 
-def request_area_matrix(places_id, tag_array, photo_tags=""):
+# TODO: Only build one row of matrix for efficiency by checking each image for presence of tag in question
+def request_area_matrix(places_id, tag_array, photo_tags="", tag=''):
+
+    global current_matrix
+
+    if len(current_matrix) > 0 and places_id == current_matrix[0]:
+        return current_matrix[1]
 
     tag_array_len = len(tag_array)
-    matrix = sparse.lil_matrix((tag_array_len, tag_array_len), dtype=np.int8)
+
+    if tag is not '':
+        matrix = sparse.lil_matrix((1, tag_array_len), dtype=np.int8)
+    else:
+        matrix = sparse.lil_matrix((tag_array_len, tag_array_len), dtype=np.int8)
 
     if places_id is None:
         return matrix
@@ -159,7 +170,24 @@ def request_area_matrix(places_id, tag_array, photo_tags=""):
                 record.remove(r)
                 break
 
-    return add_tags(matrix, record, tag_array)
+    # Remove all photos that don't contain the tag
+    # This leads to a partially constructed co-occurrence matrix which increases efficiency
+    if tag is not '':
+        for r in record:
+            if tag not in r:
+                record.remove(r)
+
+        matrix = add_tags_partial(matrix, record, tag_array, tag)
+
+    else:
+        if len(record) > 0:
+            matrix = add_tags(matrix, record, tag_array)
+
+    # Assign this matrix to be the current matrix
+    # If the next places ID is the same as this one then this matrix is used therefore increasing efficiency
+    current_matrix = [places_id, matrix]
+
+    return matrix
 
 
 def get_record(place_or_date):
@@ -217,6 +245,19 @@ def add_tags(matrix, photo_tags, tag_array):
                 if tag is not other_tag:
                     other_tag_index = binary_search(tag_array, other_tag)
                     matrix[tag_index, other_tag_index] += 1
+
+    return matrix
+
+
+def add_tags_partial(matrix, photo_tags, tag_array, tag):
+
+    for photo in photo_tags:
+
+        for other_tag in photo:
+
+            if tag is not other_tag:
+                other_tag_index = binary_search(tag_array, other_tag)
+                matrix[0, other_tag_index] += 1
 
     return matrix
 

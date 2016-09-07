@@ -3,14 +3,11 @@ import json
 from math import floor
 import numpy as np
 from datetime import datetime
-from backend import countries
+from backend.context_retrieval import countries
 
 api_key = u'267fe530e588c482dfdad60a0ea85955'
 api_secret = u'05307043c90701cf'
 flickr = flickrapi.FlickrAPI(api_key, api_secret, format='json')
-
-# camera_brands = np.load("flickr_data/camera_brands.npy")
-# camera_models = np.load("flickr_data/camera_models.npy")
 
 
 # Get the exif data (camera name, flash etc) and return relevant data
@@ -295,11 +292,15 @@ def missing_flickr_info(photo_id):
 def get_tags(photo_id):
 
     tags = []
-    tag_data = flickr.tags.getListPhoto(photo_id=photo_id)
-    tag_data = json.loads(tag_data.decode('utf-8'))['photo']['tags']['tag']
 
-    for tag in tag_data:
-        tags.append(tag['_content'])
+    try:
+        tag_data = flickr.tags.getListPhoto(photo_id=photo_id)
+        tag_data = json.loads(tag_data.decode('utf-8'))['photo']['tags']['tag']
+
+        for tag in tag_data:
+            tags.append(tag['_content'])
+    except KeyError:
+        pass
 
     return tags
 

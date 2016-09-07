@@ -17,3 +17,8 @@
 .align-right{
     text-align: right;
 }
+
+.eval-check{
+    background-color: green;
+    color: blue;
+}
