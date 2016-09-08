@@ -12,7 +12,7 @@ system_choice = ''
 systems = ['flickr_recommended', 'tag_cooccurrence', 'phillip_system', 'new_sys']
 imgs = []
 image = ''
-data = {'form-TOTAL_FORMS': '2', 'form-INITIAL_FORMS': '0', 'form-MAX_NUM_FORMS': ''}
+data = {'form-TOTAL_FORMS': '20', 'form-INITIAL_FORMS': '0', 'form-MAX_NUM_FORMS': ''}
 
 
 def rating_form(request):
