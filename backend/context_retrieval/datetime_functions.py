@@ -102,35 +102,6 @@ def to_date(date):
     return date
 
 
-def collect_date_tags():
-
-    start_of_2013 = 1356998400
-    end_of_2013 = 1388534400
-
-    tags = []
-
-    open_connection()
-
-    for date in range(start_of_2013, end_of_2013, epoch_day):
-
-        # Get tags for this date in 2013, 2014 and 2015 respectively
-        write_tags(date, fa.get_tags_date(date))
-        write_tags(date, fa.get_tags_date(date + epoch_year))
-        write_tags(date, fa.get_tags_date(date + (epoch_year * 2)))
-
-    close_connection()
-
-    return tags
-
-
-def write_tags(date, tags):
-
-    date = datetime.fromtimestamp(date).timetuple().tm_yday
-    tags = json.dumps(tags)
-    cur.execute("REPLACE INTO dates (day_of_year, tags) VALUES(%s, %s)", (date, tags))
-    conn.commit()
-
-
 def open_connection():
 
     global conn

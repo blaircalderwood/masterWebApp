@@ -92,9 +92,6 @@ def add_context(new_photo, img):
     new_photo['continent'] = countries.find_continent(new_photo['country'])
     new_photo['places_id'] = flickr_api.get_place(new_photo['lat'], new_photo['lon'])
 
-    # Not needed
-    # del new_photo['city']
-
     new_photo['amount_comments'], new_photo['amount_views'] = flickr_api.get_comments_views(new_photo['id'])
     new_photo['flash'], new_photo['device_type'] = flickr_api.get_exif(new_photo['id'])
 
@@ -122,10 +119,6 @@ def get_photo_tags(photo_id):
         for tag in tags:
             if len(tag) <= 100:
                 save_photo({'photoID': str(photo_id), 'tag': tag}, "flickrptr_photos_tags")
-
-    # Remove noisey tags
-    # TODO: adding tags to array simply to remove them again seems redundant - fix?
-    # tags = remove_noise(tags)
 
     # Return a numpy array of tags
     return tags
@@ -163,12 +156,13 @@ def save_photo(obj, table):
         conn.commit()
 
 
+# Switch the continent string to an integer value (e.g. Europe > 0)
 def switch_continent():
     open_connection()
 
     photos = get_photo_data()
-    continents = ['Europe', 'Africa', 'South America', 'North America', 'Asia', 'Oceania', 'Antarctica']
 
+    # Loop through all photos in array and update the database accordingly
     for photo in photos:
         photo['continent'] = countries.find_continent(photo['country'])
         cur.execute("UPDATE flickrptr_photos_info SET continent = %s WHERE id = %s", (photo['continent'], photo['id']))
@@ -234,14 +228,14 @@ def create_data(directory, lower_limit, upper_limit):
 
     close_connection()
 
-    print len(photo_array), len(photos_tags)
-
     # Return the collected photos and their corresponding tags
     return np.array(photo_array), np.array(photos_tags)
 
 
+# Get photo data for the given limit and offset from the database
 def get_photo_data(limit=0, offset=0):
 
+    # If the limit is not 0 retrieve all photos up to this given limit
     if limit is not 0:
         if offset is not 0:
             limit -= offset
@@ -250,12 +244,14 @@ def get_photo_data(limit=0, offset=0):
         else:
             cur.execute("SELECT * FROM flickrptr_photos_info LIMIT %s", limit)
 
+    # Otherwise get all photos
     else:
         cur.execute("SELECT * FROM flickrptr_photos_info")
 
     desc = cur.description
     objs = []
 
+    # Place all properly formatted records into an array
     for row in cur:
         obj = photo_object(desc, row)
         objs.append(obj)
@@ -263,6 +259,7 @@ def get_photo_data(limit=0, offset=0):
     return objs
 
 
+# Get all tags from the database
 def get_tags():
 
     cur.execute("SELECT * FROM tags")
@@ -318,7 +315,6 @@ def get_data(db_limit=0, percentage_test=0, directory=""):
 # Build an array containing all tags found in given dataset
 def build_tag_array(sample):
 
-    # TODO: is using sample_tags necessary? flickrptr_tags never seems to be used
     if sample:
         cur.execute("SELECT tag FROM sample_tags")
     else:

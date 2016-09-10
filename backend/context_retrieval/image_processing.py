@@ -29,7 +29,6 @@ def get_faces_array(image_array):
 
 
 # Get the orientation (portrait, landscape or square) given an image
-# NOTE: this information is returned through some Flickr API calls and so may be better using that
 def get_image_orientation(image):
 
     # Get the width and height of the image

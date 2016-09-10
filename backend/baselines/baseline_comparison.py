@@ -52,6 +52,7 @@ def build_database(directory="", db_limit_lower=0, db_limit_upper=0):
     return photo_array, photos_tags
 
 
+# Extract all unique tags from the given array and append them to the given tag array
 def append_tags(tag_array, array):
 
     for photo in array:
@@ -71,10 +72,12 @@ def offline_test(limit, training_amount, write_results=False, load_from_file=Fal
     execute_test(test_photos, test_tags, write_results)
 
 
+# Create occurrence matrices
 def set_up(limit, test_amount, load_from_file=False):
 
     training_amount = limit - test_amount
 
+    # Get the data for the photos (dominant colour etc.) from the MySQL database
     photo_array = sql_extract.get_photo_data(limit)
     photos_tags = [sql_extract.get_photo_tags(photo['id']) for photo in photo_array]
     tag_array = sql_extract.get_tags()
@@ -87,8 +90,6 @@ def set_up(limit, test_amount, load_from_file=False):
     test_photos = photo_array[training_amount:]
     test_tags = photos_tags[training_amount:]
 
-    print "Objects Loaded", len(training_photos), len(test_photos)
-
     # Create an overall co-occurrence matrix and one for each of the features
     # One feature may be used in more than one system and so creating all at the start increases efficiency
     if load_from_file:
@@ -97,36 +98,42 @@ def set_up(limit, test_amount, load_from_file=False):
     else:
         tc.create(training_photos, training_tags, tag_array)
 
+    # Return Numpy (efficient) arrays
     return np.array(test_photos), np.array(test_tags)
 
 
+# Run the offline test for the given limit and testing amount (testing amount is the number of photos to run tests on)
 def execute_test(limit, test_amount):
 
     training_amount = limit - test_amount
 
+    # Get the required data from the database
     test_photos = sql_extract.get_photo_data(limit, training_amount)
+
+    # Get the tags for all images retrieved from the database
     test_tags = [sql_extract.get_photo_tags(photo['id']) for photo in test_photos]
 
     tt_len = len(test_tags)
 
+    # Create empty arrays to hold the test results
     for sys in systems:
         sys['results'] = np.zeros((len(test_photos), 5))
 
-    # Run through each tag in the test tags set
+    # Run through each tag in the test tags set by creating several cpu processes to run on separate cores
+    # This will split the test photos up into n cores and then assemble the results into one array
     pool = Pool(cpu_count())
     partial_func = partial(get_result, test_photos, test_tags)
-
     results = pool.map(partial_func, test_tags)
 
+    # Loop through each result retrieved from multiprocessing pool above and add to appropriate system results array
     for result_index, result in enumerate(results):
         for index, sys in enumerate(systems):
             sys['results'][result_index] = result[index]
 
-    print "LENGTH", tt_len
-
     # Print the test results on screen
     for index, sys in enumerate(systems):
 
+        # Save the results to a spreadsheet
         save_results(sys['results'], 'results/systemResults/' + sys['name'] + '.csv')
 
         # Precision at one is the percentage of runs where top tag recommended is relevant (McParlane, 2014)
@@ -145,17 +152,21 @@ def execute_test(limit, test_amount):
             if row > 0:
                 sa5 += 1
 
+        # Print the results on screen
         print_results(sys, test_tags, pa1, pa5, sa5)
 
 
+# Get recommended tags for the given photo and check if they match against the ground truth
 def get_result(test_photos, test_tags, photo_tags):
 
     # Skip any photos that do not have a sufficient amount of tags
     if len(photo_tags) < 6:
         return
 
+    # Get the index of this photo in the array
     test_index = test_tags.index(photo_tags)
 
+    # Copy the tags as the original will need to be retained
     tags = copy(photo_tags)
 
     # A random tag from the photo tag list will be submitted to each baseline
@@ -164,35 +175,29 @@ def get_result(test_photos, test_tags, photo_tags):
     # All others will be compared against the baseline's recommendations
     tags.remove(tag)
 
-    # Get the recommended tags from each system
+    # Get the recommended tags from each baseline
     fr_rec = fr.get_recommended(tag, 5)
     tc_rec = tc.get_overall_recommended(tag, 5)
     pc_rec = tc.get_phillip_recommended(test_photos[test_index], tag, 5)
 
-    lc_rec, loc_matrix = tc.location_recommendation(test_photos[test_index], tag, 5, False,
-                                                    photo_tags, True)
-    t_rec, time_matrix = tc.time_recommendation(test_photos[test_index], tag, 5, False,
-                                                photo_tags, True)
-    ns_rec = tc.novel_sys_recommendations(test_photos[test_index], tag, 5, False, photo_tags,
-                                          loc_matrix, time_matrix)
+    # Get recommendations from the two novel features
+    lc_rec = tc.location_recommendation(test_photos[test_index], tag, 5, False, photo_tags)
+    t_rec = tc.time_recommendation(test_photos[test_index], tag, 5, False, photo_tags)
+    ns_rec = tc.novel_sys_recommendations(test_photos[test_index], tag, 5, False, photo_tags)
 
+    # Create an array of all systems and their recommendations
     rec_tags = [fr_rec, tc_rec, pc_rec, lc_rec, t_rec, ns_rec]
     res = []
-
-    if test_index % 10 == 0:
-        print '10 finished'
-
-    print "original", tag, tags
 
     # Loop through each tag recommendation system and gather results for precision at one etc.
     for sys, recommended_tags in zip(systems, rec_tags):
 
-        print sys['name'], recommended_tags
-
         results = np.zeros(5)
 
+        # Loop through each of the five recommended tags
         for recommended_tag_index in range(4):
 
+            # If the tag is in the ground truth then save it as 1
             try:
                 if recommended_tags[recommended_tag_index] in tags:
                     results[recommended_tag_index] = 1
@@ -203,6 +208,7 @@ def get_result(test_photos, test_tags, photo_tags):
 
         res.append(results)
 
+    # Return an array of the collected results
     return res
 
 

@@ -45,7 +45,6 @@ def get_exif(photo_id):
 
 # Get the amount of comments and views on a photo and return whether the amount is low, medium or high
 # 0 is low, 1 is average, 2 is high and 3 is unknown
-# TODO: Change bins so they hold relatively equal amount each
 def get_comments_views(photo_id):
 
     # Determine the thresholds to use for comments/views (i.e. to split them into low, medium and high)
@@ -203,15 +202,6 @@ def get_place(lat, lng, get_country_continent=False):
         return '0', 0, 0
 
 
-# TODO: Remove if not needed
-def get_city(lat, lng):
-
-    data = get_place(lat, lng)
-    city = flickr.places.getInfo(place_id=data)
-    city = json.loads(city.decode('utf-8'))
-    return city['place']['locality']['place_id']
-
-
 # Loop through all dates in past three years and retrieve photos from Flickr
 def get_tags_date(date):
 
@@ -266,8 +256,10 @@ def nearby_tags(places_id):
     return photo_tags
 
 
+# Get any data missing from the Flickr AIA database from Flickr
 def missing_flickr_info(photo_id):
 
+    # Retrieve the data and place it into an object
     info = flickr.photos.getInfo(photo_id=photo_id)
     try:
         info = json.loads(info.decode('utf-8'))['photo']
@@ -280,51 +272,59 @@ def missing_flickr_info(photo_id):
         photo_info['lon'] = info['location']['longitude']
         photo_info['country'] = info['location']['country']['_content']
 
-        # This field is not needed for our purposes
-        # photo_info['test'] = 0
-
     except KeyError:
         return False
 
     return photo_info
 
 
+# Get all tags for a given image
 def get_tags(photo_id):
 
     tags = []
 
     try:
+        # Get the tags from the Flickr API
         tag_data = flickr.tags.getListPhoto(photo_id=photo_id)
         tag_data = json.loads(tag_data.decode('utf-8'))['photo']['tags']['tag']
 
+        # Append the tags to an array
         for tag in tag_data:
             tags.append(tag['_content'])
+
     except KeyError:
         pass
 
     return tags
 
 
+# Get the top tags for a given location from the Flickr API
 def get_relevant_location(places_id, amount_results):
 
+    # Get the top tags for this location from the Flickr API
     tag_data = flickr.places.tagsForPlace(place_id=places_id)
     try:
+        # Decode the json version of these tags
         tag_data = json.loads(tag_data.decode('utf-8'))['tags']['tag'][:amount_results]
     except KeyError:
         return []
 
     array = []
 
+    # Add all tags to an array
     for tag in tag_data:
         array.append(tag["_content"])
 
     return array
 
 
+# Get the time a photo was posted onto Flickr
 def get_posting_time(photo_id):
 
+    # Get photo information from Flickr
     info = flickr.photos.getInfo(photo_id=photo_id)
     try:
+        # Get the date from the loaded information
         info = json.loads(info.decode('utf-8'))['photo']['dates']['taken']
         return to_date(info)
     except KeyError:

@@ -7,7 +7,6 @@ for i, country in enumerate(countries):
     countries[i] = country.strip()
 
 
-# TODO: Create method to determine if country is found in database (don't create matrix if its not)
 # Find the continent in which a country resides
 def find_continent(country_index):
 
