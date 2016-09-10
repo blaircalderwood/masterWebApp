@@ -18,27 +18,28 @@ saved_occurrences = []
 conn = None
 cur = None
 
-# Can add and remove features from here when they are needed / not needed
-# features = ['overall', 'flash', 'device_type', 'num_faces', 'dominant_colour', 'image_orientation']
+# A list of features used by the novel system alongside the number of feature values
 features = (('overall', 1), ('flash', 3), ('num_faces', 4), ('dominant_colour', 5),
             ('image_orientation', 3), ('continent', 8), ('time_of_day', 6), ('day_of_week', 3), ('season', 6), )
-# The number of distinct values that could be held in a feature
-# e.g. 'flash' has 3 values- 0 is off, 1 is on and 2 is unknown
-max_values = [1, 3, 3, 4, 5, 3]
 
 
+# Open a connection to the SQL database
 def open_connection():
 
+    # Read the global variables
     global conn
     global cur
 
     if conn is None:
         # Connect to the server
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='password', db=location.db)
+
+        # Set the timeout high enough so computationally expensive processes can be done
         conn.query('SET GLOBAL connect_timeout=28800')
         cur = conn.cursor()
 
 
+# Close the SQl connection
 def close_connection():
 
     global conn
@@ -64,7 +65,10 @@ def add_count(tag, other_tag, tag_array, occurrence_matrix):
     if tag_index is not -1 and other_tag_index is not -1:
 
             try:
+                # Increment the co-occurrence value by one
                 occurrence_matrix[tag_index, other_tag_index] += 1
+
+            # If the cell cannot be found print the error
             except IndexError as e:
                 print e
 
@@ -79,8 +83,10 @@ def calculate_idf(tag_array_len, occurrence_array):
 # Count all co-occurrences of given tags
 # photo_array is an array of photos that contain details such as device_type and num_faces
 # photos_tags is an array of tags associated with each image
+# The occurrence matrix can be any feature value's matrix (static or dynamic)
 def count_cooccurrences(photos_tags, tag_array, occurrence_matrix):
 
+    # Open the SQL connection
     open_connection()
 
     # Loop through all photos that contain tags
@@ -93,15 +99,14 @@ def count_cooccurrences(photos_tags, tag_array, occurrence_matrix):
 
             # Loop through all other tags in the same photo
             for other_tag_index, _ in enumerate(tag_set):
-
                 other_tag = photos_tags[photo_index][other_tag_index]
 
                 # Only add co-occurrence if the tags are not the same
                 if tag_index != other_tag_index:
-                    # Add one to the co-occurrence count of these two tags
-                    # Pass in the feature (e.g. 1 for flash if flash was on)
+                    # Add one to the matrix's co-occurrence count of these two tags
                     add_count(tag, other_tag, tag_array, occurrence_matrix)
 
+    # Close the SQL connection
     close_connection()
 
 
