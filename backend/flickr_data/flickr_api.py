@@ -200,7 +200,7 @@ def get_place(lat, lng, get_country_continent=False):
             return place, country, continent
 
     except IndexError:
-        return '0'
+        return '0', 0, 0
 
 
 # TODO: Remove if not needed

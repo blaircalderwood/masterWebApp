@@ -377,13 +377,18 @@ def get_combined_recommended(photo, tag, amount_results, feature_list, show_resu
     for feat_index, feature in enumerate(features):
 
         if feature in feature_list:
-            feat_val = int(photo[feature[0]])
             try:
-                row = get_row(feature, feat_val, tag_index, ta_len)
-                rows_normalised[counter] = normalise_row(row)
 
-            except IndexError:
-                print "Error", feat_index, feat_val
+                feat_val = int(photo[feature[0]])
+                try:
+                    row = get_row(feature, feat_val, tag_index, ta_len)
+                    rows_normalised[counter] = normalise_row(row)
+
+                except IndexError:
+                    print "Error", feat_index, feat_val
+
+            except KeyError:
+                pass
 
             counter += 1
 

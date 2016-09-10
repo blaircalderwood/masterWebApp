@@ -8,19 +8,22 @@
         <h2>Photo Tag Recommendation Evaluation</h2>
 
         <p class="centred">This website has been created to test photo tag recommendations. The following evaluation
-            should take no longer than 20 minutes.</p>
+            should take no longer than 30 minutes.</p>
 
-        <p class="centred">On the next page you will find a series of 20 image upload boxes. Please enter a separate image in each of
+        <p class="centred">On the next page you will find a series of 20 image upload boxes. Please enter a separate
+            image in each of
             these. Below each image box you will find a textbox - this is where you input the tag for the image. A tag
-            is a word or series of words (made to form one word such as 'thisisonetag') that best describes the image
-            you have uploaded. Upon entering a tag for each image and pressing 'continue' you will be greeted with a
+            is a word that best describes the image you have uploaded. Upon entering a tag for each image and pressing
+            'continue' you will be greeted with a
             series of web pages - each of which has one of your images displayed on it. On each page you will receive a
             series of tag recommendations. These are tags which the system thinks is relevant to your image. If you
             would like to include any recommended tag in your image please check the relevant checkbox. When all of your
             images have been tagged the system will delete all of your photos and tags (all that will remain on the
             system is the number of checkboxes you selected) and will inform you that the evaluation is over.</p>
 
-        <p class="centred">When selecting photos to upload a large variety of images is preferred. Please choose images taken in a
+        <p class="centred">If you have uploaded an image that does not contain the right data (some may not contain
+            location details) the system will skip that image. When selecting photos to upload a large variety of images
+            is preferred. Please choose images taken in a
             number of locations and of a number of different subjects.</p>
 
         <a class="btn btn-info" href="{% url 'upload_image' %}">Begin</a>

@@ -140,7 +140,6 @@ def save_to_area(place_or_date, photo_tags):
         return
 
 
-# TODO: Only build one row of matrix for efficiency by checking each image for presence of tag in question
 def request_area_matrix(places_id, tag_array, photo_tags="", tag=''):
 
     global current_matrix
@@ -158,7 +157,10 @@ def request_area_matrix(places_id, tag_array, photo_tags="", tag=''):
     if places_id is None:
         return matrix
 
-    record = json.loads(get_record(places_id).decode('utf-8'))
+    try:
+        record = json.loads(get_record(places_id).decode('utf-8'))
+    except AttributeError:
+        return matrix
 
     # If record cannot be found then inform calling function
     if record is False:
@@ -264,3 +266,26 @@ def add_tags_partial(matrix, photo_tags, tag_array, tag):
 open_connection()
 areas_array = get_all_areas()
 dates_array = get_all_areas(False)
+
+
+def get_top_tags(place_or_date, tag_array):
+
+    # Remove all values that contain '~~~api~~~' (this is a bug)
+    api_col = 369973
+
+    matrix = request_area_matrix(place_or_date, tag_array)
+    matrix[api_col, :] = 0
+    matrix[:, api_col] = 0
+
+    matrix = matrix.tocoo()
+
+    try:
+        mx = matrix.data.argmax()
+
+        top_col = matrix.col[mx]
+        top_row = matrix.row[mx]
+
+        return tag_array[top_col], tag_array[top_row]
+
+    except ValueError:
+        return "No tags found"

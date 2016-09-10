@@ -11,9 +11,9 @@ from backend.flickr_data import flickr_api
 from datetime import datetime
 import backend.baselines.tag_cooccurrence as tc
 from backend.baselines import flickr_reccommended
-import numpy as np
+from backend.context_retrieval.spreadsheetIO import save_results
 from evaluation.forms import RatingForm, ImageForm
-from copy import copy
+from evaluation.models import Rating
 
 imgs = []
 image_names = []
@@ -51,15 +51,22 @@ def create_image_data():
 
     for directory, _, files in os.walk('media/user_images'):
         for img_file in files:
-            image = os.path.join(directory, img_file)
-            image = ip.read_image(image)
 
-            # OS join isn't working for this line
-            img_name = 'media/user_images/' + img_file
-            image_names.append(img_name)
+            # Skip all images that don't have correct metadata
+            try:
+                image = os.path.join(directory, img_file)
+                image = ip.read_image(image)
 
-            # image_names.append(img_name)
-            imgs.append(get_exif(img_name, image))
+                # OS join isn't working for this line
+                img_name = 'media/user_images/' + img_file
+                image_names.append(img_name)
+
+                # image_names.append(img_name)
+                imgs.append(get_exif(img_name, image))
+
+            except AttributeError or KeyError:
+                image = UserImage.objects.filter(img_name=img_file)
+                image.delete()
 
 
 def next_img():
@@ -136,9 +143,14 @@ def get_exif(photo_filename, photo_file):
     photo['lat'], photo['lon'] = convert_to_degress(f)
     photo['places_id'], photo['country'], photo['continent'] = flickr_api.get_place(photo['lat'], photo['lon'], True)
 
-    photo['postingTime'] = datetime.strptime(f['DateTimeDigitized'], '%Y:%m:%d %H:%S:%f')
+    d = None
 
-    d = photo['postingTime']
+    try:
+        photo['postingTime'] = datetime.strptime(f['DateTimeDigitized'], '%Y:%m:%d %H:%S:%f')
+
+        d = photo['postingTime']
+    except KeyError:
+        pass
 
     if d is not None:
         photo['time_of_day'] = dtf.time_of_day(d)
@@ -173,15 +185,41 @@ def get_exif(photo_filename, photo_file):
 # From http://stackoverflow.com/questions/6460381/translate-exif-dms-to-dd-geolocation-with-python
 def convert_to_degress(photo):
 
-    d = photo['GPSInfo']
+    try:
+        d = photo['GPSInfo']
 
-    lat = d[2][0][0]/d[2][0][1] + (d[2][1][0] / d[2][1][1])/60 + (d[2][2][0] / d[2][2][1])/3600
-    lon = d[4][0][0]/d[2][0][1] + (d[4][1][0] / d[4][1][1])/60 + (d[4][2][0] / d[4][2][1])/3600
+        lat = d[2][0][0]/d[2][0][1] + (d[2][1][0] / d[2][1][1])/60 + (d[2][2][0] / d[2][2][1])/3600
+        lon = d[4][0][0]/d[2][0][1] + (d[4][1][0] / d[4][1][1])/60 + (d[4][2][0] / d[4][2][1])/3600
 
-    if d[1] == 'S':
-        lat *= -1
+        if d[1] == 'S':
+            lat *= -1
 
-    if d[3] == 'W':
-        lon *= -1
+        if d[3] == 'W':
+            lon *= -1
 
-    return lat, lon
+        return lat, lon
+
+    except KeyError:
+        # No Lat / Long available
+        return 0, 0
+
+
+def save_ratings():
+
+    ratings = Rating.objects.all()
+    fr = {'name': 'flickr_recommended', 'results': []}
+    tc = {'name': 'tag_cooccurrence', 'results': []}
+    ns = {'name': 'new_sys', 'results': []}
+    pr = {'name': 'phillip_system', 'results': []}
+    result_systems = [fr, tc, ns, pr]
+
+    for rating in ratings:
+
+        score = [rating.selected_1, rating.selected_2, rating.selected_3, rating.selected_4, rating.selected_5]
+
+        for sys in result_systems:
+            if rating.system_choice == sys['name']:
+                sys['results'].append(score)
+
+    for sys in result_systems:
+        save_results(sys['results'], 'online_results/' + sys['name'] + '.csv')

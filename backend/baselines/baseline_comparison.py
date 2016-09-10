@@ -2,7 +2,7 @@ from __future__ import division
 import random
 from copy import copy
 import numpy as np
-from context_retrieval import sql_extract
+from backend.context_retrieval import sql_extract
 import backend.baselines.tag_cooccurrence as tc
 from backend.context_retrieval import location
 from backend.context_retrieval.spreadsheetIO import save_results

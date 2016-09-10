@@ -28,6 +28,7 @@ class UserImage(models.Model):
 
     def save(self, *args, **kwargs):
         self.img_name = self.img.name
+        self.tag = str(self.tag).lower().strip()
         super(UserImage, self).save(*args, **kwargs)
 
     def __unicode__(self):
